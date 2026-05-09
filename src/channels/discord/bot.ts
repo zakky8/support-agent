@@ -134,7 +134,9 @@ export function createDiscordBot(): Client {
     // ── Process with Agent Brain ────────────────────
     try {
       // Show typing indicator
-      await msg.channel.sendTyping();
+      if ('sendTyping' in msg.channel) {
+        await msg.channel.sendTyping();
+      }
 
       const response = await processMessage(
         'discord',
@@ -151,19 +153,24 @@ export function createDiscordBot(): Client {
         // Split into chunks
         const chunks = response.reply.match(new RegExp(`.{1,${maxLen}}`, 'gs')) || [];
         for (let i = 0; i < chunks.length; i++) {
+          const chunkStr = chunks[i];
+          if (!chunkStr) continue;
+          
           if (i === 0) {
-            await msg.reply(chunks[i]);
-          } else {
-            await msg.channel.send(chunks[i]);
+            await msg.reply(chunkStr);
+          } else if ('send' in msg.channel) {
+            await msg.channel.send(chunkStr);
           }
         }
       }
 
       // Show escalation notice if applicable
       if (response.shouldEscalate && !response.reply.includes('escalated')) {
-        await msg.channel.send(
-          `⚠️ This conversation has been flagged for human review.`,
-        );
+        if ('send' in msg.channel) {
+          await msg.channel.send(
+            `⚠️ This conversation has been flagged for human review.`,
+          );
+        }
       }
     } catch (err) {
       logger.error('Discord message handling error', { error: err });

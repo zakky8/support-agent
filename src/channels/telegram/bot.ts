@@ -128,8 +128,8 @@ export function createTelegramBot(): Telegraf {
   });
 
   // ── Error Handler ───────────────────────────────────
-  bot.catch((err: Error) => {
-    logger.error('Telegraf error', { error: err.message });
+  bot.catch((err: unknown) => {
+    logger.error('Telegraf error', { error: err instanceof Error ? err.message : String(err) });
   });
 
   return bot;
