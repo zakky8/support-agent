@@ -111,8 +111,7 @@ export function createWebServer() {
     });
   });
 
-    });
-  });
+
 
   return app;
 }

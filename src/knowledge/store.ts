@@ -99,7 +99,7 @@ class KnowledgeStore {
 
     const results = await this.vectorStore.similaritySearchWithScore(query, topK);
     
-    return results.map(([doc, score]) => ({
+    return results.map(([doc, score]: [any, number]) => ({
       content: doc.pageContent,
       source: doc.metadata.source as string,
       score,
