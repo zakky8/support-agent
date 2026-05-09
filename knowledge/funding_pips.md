@@ -1,61 +1,75 @@
-# Funding Pips - Complete Knowledge Base
+# FundingPips Knowledge Base & Exact Rules
 
-## 1. Company Overview
-Funding Pips is a proprietary trading firm that provides undercapitalized traders with the opportunity to trade with company capital. They offer various evaluation models and an instant funding model (Zero Program). 
+This document contains the exact rules, policies, and FAQs for FundingPips. Base all answers strictly on these guidelines to ensure zero hallucination.
 
-## 2. Evaluation Models & Phases
+## 1. The IP Rule & Location
+The region of your IP address used to purchase the evaluation, log into the FundingPips website, and access your account during both the Evaluation Phase and on your Master Account must remain consistent.
+- **Traveling:** You are free to travel and access your account from anywhere. However, if our team detects an unrealistic change in IP activity, they may reach out for verification (e.g., requesting a plane ticket, passport stamp, or live video).
+- **VPS/VPN:** You can use a VPS or VPN. If a region change is detected, we may ask for proof of ownership (e.g., invoice) or request that you use a static IP so we can whitelist it.
+- **Multiple ISPs / Devices:** Using multiple ISPs or devices within the same city is allowed.
 
-### 1-Step Evaluation
-A single-phase challenge designed for fast-track funding.
+## 2. Evaluation Models
+
+### 1-Step Model
+A fast-track, single-phase evaluation.
 - **Profit Target:** 10%
 - **Maximum Daily Loss:** 4%
 - **Maximum Overall Loss:** 6%
-- **Minimum Trading Days:** 0 to 3 days (depending on exact sub-tier)
-- **Time Limit:** Unlimited
+- **Time Limits:** Unlimited. Take as much time as you need.
 
-### 2-Step Evaluation (Standard & Pro)
-A traditional two-phase evaluation.
+### 2-Step Standard Model
+The traditional two-phase evaluation.
 - **Phase 1 Profit Target:** 8%
 - **Phase 2 Profit Target:** 5%
 - **Maximum Daily Loss:** 5%
 - **Maximum Overall Loss:** 10%
-- **Time Limit:** Unlimited
-- *Note:* The Pro version has slightly tighter drawdowns but cheaper entry fees.
+- **Time Limits:** Unlimited.
 
-### Zero Program (Instant Funding)
-No evaluation phase required. You start trading live funds immediately.
-- **Rules:** Trailing drawdown applies. The first 3% of profits act as a safety cushion and cannot be withdrawn.
-- **Minimum Profitable Days:** 7 days within a 30-day period.
+### 2-Step Pro Model
+Similar to Standard, but with tighter drawdowns and cheaper entry.
+- **Phase 1 Profit Target:** 8%
+- **Phase 2 Profit Target:** 5%
+- **Maximum Daily Loss:** 5%
+- **Maximum Overall Loss:** 10%
 
-## 3. Drawdown Rules
-- **Daily Drawdown:** Calculated based on the initial account balance or equity at the start of the day (usually 00:00 CE(S)T).
-- **Maximum Drawdown:** Typically fixed at 6% to 10% of the initial balance, depending on the model.
+### FundingPips Zero (Instant Funding)
+Start trading live immediately without an evaluation phase.
+- **Rule:** A trailing drawdown applies. The first 3% of profits acts as a safety cushion and cannot be withdrawn. You must have at least 7 profitable trading days within a 30-day period.
 
-## 4. Trading Rules & Restrictions
-- **Prohibited Strategies:** High-Frequency Trading (HFT), latency arbitrage, reverse arbitrage, toxic order flow, tick scalping, and copy trading from third-party signals.
-- **News Trading:** 
-  - On Master/Funded accounts, trading within 5 minutes before and after high-impact (Red Folder) news is restricted. Profits made in this window are deducted.
-  - Trades opened at least 5 hours prior to the news event are exempt.
-  - Zero accounts have a stricter 10-minute window.
-- **Weekend/Overnight Holding:** Allowed on Standard evaluations, but restricted on the Zero Account.
-- **Inactivity:** Accounts are breached if no trades are placed for 30 consecutive calendar days.
+## 3. Trading Rules & Practices
 
-## 5. Scaling Plan (Hot Seat)
-Consistently profitable traders can scale their accounts up to a maximum of $2,000,000.
-- Milestones are based on achieving consistent payouts (e.g., 4 successful payouts with a net profit target).
-- Scaled accounts receive higher profit splits and larger drawdown buffers.
+### Prohibited Strategies
+Trading strategies that exploit the simulated environment are strictly prohibited. These include:
+- High-Frequency Trading (HFT)
+- Latency Arbitrage & Reverse Arbitrage
+- Toxic order flow & Server Spamming
+- Tick Scalping
 
-## 6. Payouts & Rewards
-- **Profit Split:** Ranges from 60% up to 100% depending on the scaling tier and account type.
-- **Payout Frequency:** Weekly, Bi-weekly, Monthly, or On-Demand (Tuesday Paydays).
-- **Payment Methods:** Cryptocurrency and RISE.
-- **Minimum Threshold:** Generally requires at least 1% or 2% profit to request a payout.
+### News Trading Rule
+- **Master Accounts (Funded):** You cannot open or close trades within 5 minutes before or after high-impact (red folder) news events. Profits made within this window will be deducted.
+- **Zero Account:** Stricter 10-minute window before/after red folder news.
+- **Exemption:** Trades opened at least 5 hours prior to the news event are exempt from this rule and can be held through the news.
 
-## 7. Account Management
-- **Merge Accounts:** Traders can merge funded accounts up to the maximum capital allocation limit ($300k to $2M depending on scaling).
-- **Platform:** Trades are executed via MetaTrader 4 (MT4), MetaTrader 5 (MT5), or cTrader depending on current broker partnerships.
+### Copy Trading
+- **Internal:** You are allowed to copy trade between your own personal FundingPips accounts.
+- **External:** Copy trading from third-party services or other traders is strictly prohibited. You must trade your own strategy.
 
-## 8. General FAQ
-- **Are EAs (Expert Advisors) allowed?** Yes, as long as they do not violate the prohibited strategies (e.g., no HFT EAs).
-- **Do I need to place a stop loss?** Not strictly required, but highly recommended for risk management.
-- **What happens if I hit the drawdown limit?** The account is breached and closed. You must purchase a new challenge.
+### EAs (Expert Advisors)
+You are allowed to use EAs, provided they act as trade management or risk management tools. Fully automated trading bots that violate our prohibited strategies (like HFT EAs) will lead to account termination.
+
+### Lot Size Limit
+For 1-Step and 3-Step Master Accounts, there is a maximum limit of **10 lots per day**. Trades exceeding this will be automatically closed, and trading will be temporarily suspended for the rest of the day.
+
+### Risk Management & Stop Loss
+- **Stop Loss:** Using a stop loss is not strictly required during evaluations or on Master accounts, but it is highly recommended for risk management.
+- **Maximum Risk per Trade:** For accounts $50k and above, max risk per position is 2%. For accounts below $50k, max risk per position is 3%.
+
+## 4. Market Mechanics
+- **Slippage:** Slippage occurs during high volatility (like major news events). Market conditions can shift rapidly, leading to execution prices different from expected prices.
+- **Rollover & Swap Rates:** Rollover happens automatically at 5 PM ET. Swap rates triple on Wednesdays for forex and Fridays for indices. You can view exact swap rates by clicking "info" on Match-Trader.
+
+## 5. Payouts & Scaling (The Hot Seat)
+- **Profit Splits:** Ranging from 60% up to 100% depending on the scaling tier.
+- **Payout Frequency:** Choose between Weekly, Bi-weekly, Monthly, or On-Demand (Tuesday Payday).
+- **Payment Methods:** Cryptocurrency or RISE.
+- **Scaling:** Consistently profitable traders (e.g., achieving 4 successful payouts) scale up their capital, up to a maximum of $2,000,000 in funded capital.
