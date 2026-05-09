@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Support Agent Widget Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .demo-container {
+      text-align: center;
+      max-width: 600px;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    p {
+      color: #666;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <h1>Welcome to YourCompany Support</h1>
+    <p>This is a demo page for the embedded AI Support Widget.</p>
+    <p>Look for the chat bubble in the bottom right corner of the screen to interact with the agent!</p>
+  </div>
+
+  <!-- Include the widget script -->
+  <script src="/widget.js"></script>
+  <script>
+    // Initialize the widget
+    window.SupportWidget.init({
+      apiUrl: 'http://localhost:3000',
+      themeColor: '#0066ff',
+      botName: 'Atlas Support',
+    });
+  </script>
+</body>
+</html>
