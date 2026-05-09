@@ -49,9 +49,8 @@ export function createTelegramBot(): Telegraf {
 
   // ── /human Command ──────────────────────────────────
   bot.command('human', async (ctx: Context) => {
-    const userId = ctx.from?.id.toString() || '';
-    const session = memory.getOrCreate('telegram', userId);
-    memory.escalate(session, 'User requested human agent via /human command');
+    const session = await memory.getOrCreate('telegram', String(ctx.from?.id));
+    await memory.escalate(session, 'User requested human agent via /human command');
 
     await ctx.reply(
       `🙋 I've escalated your conversation to a human agent. They'll be with you as soon as possible.\n\n` +
@@ -62,10 +61,9 @@ export function createTelegramBot(): Telegraf {
 
   // ── /reset Command ──────────────────────────────────
   bot.command('reset', async (ctx: Context) => {
-    const userId = ctx.from?.id.toString() || '';
-    const session = memory.getOrCreate('telegram', userId);
-    memory.clearHistory(session);
-    memory.deescalate(session);
+    const session = await memory.getOrCreate('telegram', String(ctx.from?.id));
+    await memory.clearHistory(session);
+    await memory.deescalate(session);
 
     await ctx.reply(
       `🔄 Conversation reset! I've cleared our chat history.\n` +

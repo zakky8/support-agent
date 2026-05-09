@@ -13,13 +13,23 @@ import { processMessage } from '../../agent/brain';
 import { memory } from '../../agent/memory';
 import { logger } from '../../utils/logger';
 import { v4 as uuid } from 'uuid';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // Limit each IP to 30 requests per windowMs
+  message: { error: 'Too many requests, please try again later.' }
+});
 
 export function createWebServer() {
   const { app } = expressWs(express());
 
   // ── Middleware ───────────────────────────────────────
+  app.use(helmet({ contentSecurityPolicy: false })); // Disabled CSP for simple demo widget embed
   app.use(cors({ origin: config.web.corsOrigin }));
   app.use(express.json());
+  app.use('/api/', apiLimiter);
   app.use(express.static(path.join(__dirname, '../../../public')));
 
   // ── Health Check ────────────────────────────────────
@@ -101,19 +111,7 @@ export function createWebServer() {
     });
   });
 
-  // ── Admin: List active sessions ─────────────────────
-  app.get('/api/admin/sessions', (_req, res) => {
-    const sessions = memory.getAllSessions().map((s) => ({
-      id: s.id,
-      channel: s.channel,
-      userId: s.userId,
-      userName: s.userName,
-      messageCount: s.messages.length,
-      isEscalated: s.isEscalated,
-      createdAt: s.createdAt,
-      updatedAt: s.updatedAt,
-    }));
-    res.json({ sessions, total: sessions.length });
+    });
   });
 
   return app;

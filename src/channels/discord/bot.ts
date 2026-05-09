@@ -93,8 +93,8 @@ export function createDiscordBot(): Client {
     }
 
     if (lowerMessage === '!human') {
-      const session = memory.getOrCreate('discord', msg.author.id);
-      memory.escalate(session, 'User requested human agent via !human command');
+      const session = await memory.getOrCreate('discord', msg.author.id);
+      await memory.escalate(session, 'User requested human agent via !human command');
       await msg.reply(
         `🙋 I've escalated your conversation to a human agent. They'll be with you shortly.\n` +
           `Type \`back to ai\` to return to AI support.`,
@@ -103,9 +103,9 @@ export function createDiscordBot(): Client {
     }
 
     if (lowerMessage === '!reset') {
-      const session = memory.getOrCreate('discord', msg.author.id);
-      memory.clearHistory(session);
-      memory.deescalate(session);
+      const session = await memory.getOrCreate('discord', msg.author.id);
+      await memory.clearHistory(session);
+      await memory.deescalate(session);
       await msg.reply(`🔄 Conversation reset! How can I help you?`);
       return;
     }

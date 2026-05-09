@@ -1,36 +1,57 @@
-// ─────────────────────────────────────────────────────────
-// Session Memory Manager
-// Maintains conversation state per user across channels.
-// Uses in-memory store; swap for Redis/PostgreSQL in prod.
-// ─────────────────────────────────────────────────────────
-
 import { v4 as uuid } from 'uuid';
+import { createClient } from 'redis';
 import { Session, Message, ChannelType } from './types';
 import { logger } from '../utils/logger';
 
-/** Maximum messages to keep in short-term memory per session */
 const MAX_HISTORY = 50;
+const SESSION_TTL_SECONDS = 2 * 60 * 60; // 2 hours
 
-/** Session TTL in milliseconds (2 hours) */
-const SESSION_TTL = 2 * 60 * 60 * 1000;
-
-class SessionMemory {
-  private sessions: Map<string, Session> = new Map();
-  private cleanupInterval: NodeJS.Timeout;
+class RedisSessionMemory {
+  private client;
+  private isConnected = false;
 
   constructor() {
-    // Periodically evict expired sessions
-    this.cleanupInterval = setInterval(() => this.evictExpired(), 60_000);
+    this.client = createClient({
+      url: process.env.REDIS_URL || 'redis://127.0.0.1:6379'
+    });
+
+    this.client.on('error', (err) => logger.error('Redis Client Error', err));
+    this.client.on('connect', () => {
+      this.isConnected = true;
+      logger.info('Connected to Redis for Session Memory');
+    });
   }
 
-  /**
-   * Get or create a session for a given user+channel combination.
-   * Sessions are keyed by `{channel}:{userId}` so a user on Telegram
-   * and the same user on Discord have separate conversation threads.
-   */
-  getOrCreate(channel: ChannelType, userId: string, userName?: string): Session {
-    const key = `${channel}:${userId}`;
-    let session = this.sessions.get(key);
+  async connect() {
+    if (!this.isConnected) {
+      await this.client.connect();
+    }
+  }
+
+  private async getSession(key: string): Promise<Session | null> {
+    await this.connect();
+    const data = await this.client.get(key);
+    if (!data) return null;
+    try {
+      const session = JSON.parse(data);
+      // Revive dates
+      session.createdAt = new Date(session.createdAt);
+      session.updatedAt = new Date(session.updatedAt);
+      session.messages.forEach((m: any) => m.timestamp = new Date(m.timestamp));
+      return session as Session;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  private async saveSession(key: string, session: Session): Promise<void> {
+    await this.connect();
+    await this.client.setEx(key, SESSION_TTL_SECONDS, JSON.stringify(session));
+  }
+
+  async getOrCreate(channel: ChannelType, userId: string, userName?: string): Promise<Session> {
+    const key = `session:${channel}:${userId}`;
+    let session = await this.getSession(key);
 
     if (!session) {
       session = {
@@ -44,25 +65,25 @@ class SessionMemory {
         updatedAt: new Date(),
         isEscalated: false,
       };
-      this.sessions.set(key, session);
-      logger.info(`New session created`, { sessionId: session.id, channel, userId });
+      await this.saveSession(key, session);
+      logger.info(`New session created in Redis`, { sessionId: session.id, channel, userId });
     }
 
     return session;
   }
 
-  /** Add a message to the session and trim if over limit */
-  addMessage(session: Session, message: Message): void {
+  async addMessage(session: Session, message: Message): Promise<void> {
     session.messages.push(message);
     session.updatedAt = new Date();
 
-    // Keep only the most recent messages (sliding window)
     if (session.messages.length > MAX_HISTORY) {
       session.messages = session.messages.slice(-MAX_HISTORY);
     }
+    
+    const key = `session:${session.channel}:${session.userId}`;
+    await this.saveSession(key, session);
   }
 
-  /** Get conversation history formatted for the LLM */
   getHistory(session: Session): Array<{ role: string; content: string }> {
     return session.messages.map((m) => ({
       role: m.role,
@@ -70,52 +91,42 @@ class SessionMemory {
     }));
   }
 
-  /** Mark a session as escalated to human agent */
-  escalate(session: Session, reason: string): void {
+  async escalate(session: Session, reason: string): Promise<void> {
     session.isEscalated = true;
     session.context['escalationReason'] = reason;
     session.updatedAt = new Date();
+    
+    const key = `session:${session.channel}:${session.userId}`;
+    await this.saveSession(key, session);
+    
     logger.warn(`Session escalated to human`, {
       sessionId: session.id,
       reason,
     });
   }
 
-  /** Reset escalation (when human agent hands back to AI) */
-  deescalate(session: Session): void {
+  async deescalate(session: Session): Promise<void> {
     session.isEscalated = false;
     delete session.context['escalationReason'];
     session.updatedAt = new Date();
+    
+    const key = `session:${session.channel}:${session.userId}`;
+    await this.saveSession(key, session);
   }
 
-  /** Clear a session's conversation history */
-  clearHistory(session: Session): void {
+  async clearHistory(session: Session): Promise<void> {
     session.messages = [];
     session.updatedAt = new Date();
+    
+    const key = `session:${session.channel}:${session.userId}`;
+    await this.saveSession(key, session);
   }
 
-  /** Get all active sessions (for admin dashboard) */
-  getAllSessions(): Session[] {
-    return Array.from(this.sessions.values());
-  }
-
-  /** Evict sessions that have been idle longer than TTL */
-  private evictExpired(): void {
-    const now = Date.now();
-    for (const [key, session] of this.sessions.entries()) {
-      if (now - session.updatedAt.getTime() > SESSION_TTL) {
-        this.sessions.delete(key);
-        logger.debug(`Session evicted (TTL)`, { sessionId: session.id });
-      }
+  async destroy(): Promise<void> {
+    if (this.isConnected) {
+      await this.client.quit();
     }
-  }
-
-  /** Cleanup on shutdown */
-  destroy(): void {
-    clearInterval(this.cleanupInterval);
-    this.sessions.clear();
   }
 }
 
-// Singleton instance
-export const memory = new SessionMemory();
+export const memory = new RedisSessionMemory();

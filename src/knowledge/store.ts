@@ -1,83 +1,52 @@
 // ─────────────────────────────────────────────────────────
-// Knowledge Store — In-Memory Vector Search
-// A lightweight vector store using cosine similarity.
-// For production, swap this with Pinecone, Chroma, or Weaviate.
+// Knowledge Store — Production Vector Search
+// Uses Pinecone Vector Database and Google/OpenAI embeddings.
 // ─────────────────────────────────────────────────────────
 
 import { KnowledgeChunk } from '../agent/types';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { ChatOpenAI } from '@langchain/openai';
+import { Pinecone } from '@pinecone-database/pinecone';
+import { PineconeStore } from '@langchain/pinecone';
+import { OpenAIEmbeddings } from '@langchain/openai';
+import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import fs from 'fs';
 import path from 'path';
 
-interface EmbeddedChunk {
-  content: string;
-  source: string;
-  embedding: number[];
-}
-
 class KnowledgeStore {
-  private chunks: EmbeddedChunk[] = [];
+  private vectorStore: PineconeStore | null = null;
   private isLoaded = false;
+  private pinecone: Pinecone;
 
-  /** Cosine similarity between two vectors */
-  private cosineSimilarity(a: number[], b: number[]): number {
-    if (a.length !== b.length) return 0;
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-    for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
-    }
-    const denominator = Math.sqrt(normA) * Math.sqrt(normB);
-    return denominator === 0 ? 0 : dotProduct / denominator;
+  constructor() {
+    this.pinecone = new Pinecone({
+      apiKey: process.env.PINECONE_API_KEY || 'fake-api-key',
+    });
   }
 
-  /**
-   * Generate embeddings using a simple hash-based approach.
-   * In production, replace with proper embedding model calls.
-   */
-  private async generateEmbedding(text: string): Promise<number[]> {
-    // Simple but effective TF-IDF-like embedding for local use.
-    // For production, use Google's text-embedding or OpenAI's ada-002.
-    const dimension = 384;
-    const embedding = new Array(dimension).fill(0);
-    const words = text.toLowerCase().split(/\s+/);
-
-    for (const word of words) {
-      let hash = 0;
-      for (let i = 0; i < word.length; i++) {
-        const char = word.charCodeAt(i);
-        hash = ((hash << 5) - hash + char) | 0;
-      }
-      // Distribute across multiple dimensions
-      for (let d = 0; d < 8; d++) {
-        const idx = Math.abs((hash * (d + 1)) % dimension);
-        embedding[idx] += 1.0 / words.length;
-      }
+  private getEmbeddings() {
+    if (config.llm.provider === 'openai') {
+      return new OpenAIEmbeddings({
+        openAIApiKey: config.llm.openai.apiKey,
+        modelName: 'text-embedding-3-small',
+      });
     }
-
-    // Normalize
-    const norm = Math.sqrt(embedding.reduce((sum, v) => sum + v * v, 0));
-    if (norm > 0) {
-      for (let i = 0; i < dimension; i++) {
-        embedding[i] /= norm;
-      }
-    }
-
-    return embedding;
+    return new GoogleGenerativeAIEmbeddings({
+      apiKey: config.llm.google.apiKey,
+      model: 'text-embedding-004',
+    });
   }
 
-  /**
-   * Load and embed all documents from the knowledge directory.
-   */
   async loadDocuments(): Promise<void> {
     const dir = config.rag.knowledgeDir;
+    
+    if (!process.env.PINECONE_API_KEY || process.env.PINECONE_API_KEY === 'fake-api-key') {
+      logger.warn('PINECONE_API_KEY is not set. Falling back to simple mode or skipping RAG ingestion in production. Set PINECONE_API_KEY to enable full vector search.');
+      this.isLoaded = true;
+      return;
+    }
 
     if (!fs.existsSync(dir)) {
       logger.warn(`Knowledge directory not found: ${dir}. Creating it.`);
@@ -100,59 +69,50 @@ class KnowledgeStore {
       chunkOverlap: config.rag.chunkOverlap,
     });
 
-    let totalChunks = 0;
+    const indexName = process.env.PINECONE_INDEX || 'support-agent-index';
+    const pineconeIndex = this.pinecone.Index(indexName);
+    
+    const embeddings = this.getEmbeddings();
 
+    let allDocs: any[] = [];
     for (const file of files) {
       const filePath = path.join(dir, file);
       const content = fs.readFileSync(filePath, 'utf-8');
       const docs = await splitter.createDocuments([content], [{ source: file }]);
-
-      for (const doc of docs) {
-        const embedding = await this.generateEmbedding(doc.pageContent);
-        this.chunks.push({
-          content: doc.pageContent,
-          source: file,
-          embedding,
-        });
-        totalChunks++;
-      }
+      allDocs = allDocs.concat(docs);
     }
 
+    logger.info(`Ingesting ${allDocs.length} chunks into Pinecone index: ${indexName}...`);
+    this.vectorStore = await PineconeStore.fromDocuments(allDocs, embeddings, {
+      pineconeIndex,
+    });
+
     this.isLoaded = true;
-    logger.info(`Knowledge base loaded: ${files.length} files, ${totalChunks} chunks`);
+    logger.info(`Knowledge base loaded in Pinecone: ${files.length} files.`);
   }
 
-  /**
-   * Semantic search — find the most relevant chunks for a query.
-   */
   async search(query: string, topK: number = 5): Promise<KnowledgeChunk[]> {
-    if (this.chunks.length === 0) {
+    if (!this.vectorStore) {
+      // If Pinecone is not configured, we gracefully return empty arrays to fall back to base LLM.
       return [];
     }
 
-    const queryEmbedding = await this.generateEmbedding(query);
-
-    const scored = this.chunks.map((chunk) => ({
-      content: chunk.content,
-      source: chunk.source,
-      score: this.cosineSimilarity(queryEmbedding, chunk.embedding),
+    const results = await this.vectorStore.similaritySearchWithScore(query, topK);
+    
+    return results.map(([doc, score]) => ({
+      content: doc.pageContent,
+      source: doc.metadata.source as string,
+      score,
     }));
-
-    scored.sort((a, b) => b.score - a.score);
-
-    return scored.slice(0, topK).filter((c) => c.score > 0.1);
   }
 
-  /** Check if the knowledge base has been loaded */
   get loaded(): boolean {
     return this.isLoaded;
   }
 
-  /** Get the total number of chunks */
   get chunkCount(): number {
-    return this.chunks.length;
+    return 0; // Pinecone doesn't expose a cheap synchronous count
   }
 }
 
-// Singleton
 export const knowledgeBase = new KnowledgeStore();

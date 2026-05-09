@@ -177,7 +177,7 @@ export async function processMessage(
   const startTime = Date.now();
 
   // 1. Get or create the session
-  const session = memory.getOrCreate(channel, userId, userName);
+  const session = await memory.getOrCreate(channel, userId, userName);
 
   // 2. Check if escalated — don't let AI respond if a human is handling it
   if (session.isEscalated) {
@@ -192,7 +192,7 @@ export async function processMessage(
 
   // Handle "back to ai" command
   if (userMessage.toLowerCase().trim() === 'back to ai') {
-    memory.deescalate(session);
+    await memory.deescalate(session);
     return {
       reply: `Welcome back! I'm ${config.agent.name}, and I'm here to help. What can I assist you with?`,
       confidence: 1.0,
@@ -207,7 +207,7 @@ export async function processMessage(
     content: userMessage,
     timestamp: new Date(),
   };
-  memory.addMessage(session, userMsg);
+  await memory.addMessage(session, userMsg);
 
   // 4. RAG — Retrieve relevant knowledge
   let ragContext = '';
@@ -299,7 +299,7 @@ export async function processMessage(
       latencyMs: Date.now() - startTime,
     },
   };
-  memory.addMessage(session, assistantMsg);
+  await memory.addMessage(session, assistantMsg);
 
   const latency = Date.now() - startTime;
   logger.info(`Response generated`, {
